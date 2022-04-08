@@ -34,7 +34,7 @@ plot_PCA = function(voomObj, condition_variable){
 }
 res_pca = plot_PCA(limma_res$voomObj, "definition")
 
-clinical = data@colData
+clinical = data
 clin_df = clinical[clinical$definition == "Primary solid Tumor",
                    c("patient",
                      "vital_status", 
@@ -42,18 +42,30 @@ clin_df = clinical[clinical$definition == "Primary solid Tumor",
                      "days_to_last_follow_up",
                      "age_at_diagnosis",
                      "race",
-                     "gender")]
+                     "gender",
+                     "ajcc_pathologic_stage")]
 
 
 clin_df$deceased = clin_df$vital_status == "Dead"
 clin_df$overall_survival = ifelse(clin_df$deceased,clin_df$days_to_death,clin_df$days_to_last_follow_up)
 Surv(clin_df$overall_survival, clin_df$deceased)
 Surv(clin_df$overall_survival, clin_df$deceased) ~ clin_df$gender
+
 fit = survfit(Surv(overall_survival, deceased) ~ gender, data=clin_df)
 print(fit)
 ggsurvplot(fit, data=clin_df, pval = T)
 ggsurvplot(fit, data=clin_df, pval=T, risk.table=T, risk.table.col="strata")
 
+
+
+fit2 = survfit(Surv(overall_survival, deceased) ~ ajcc_pathologic_stage, data=clin_df)
+print(fit2)
+ggsurvplot(fit2[c(1,2,4)], data=clin_df, pval=T, risk.table=T, risk.table.col="strata")
+
+
+fit3 = survfit(Surv(overall_survival, deceased) ~ race, data=clin_df)
+print(fit3)
+ggsurvplot(fit3[c(2,3,5)], data=clin_df, pval=T, risk.table=T, risk.table.col="strata")
 
 
 d_mat = as.matrix(t(limma_res$voomObj$E))
@@ -161,7 +173,19 @@ expr_diseased = d_mat[rownames(clin_df), gene_ids[1]]
 expr_healthy = d_mat[setdiff(rownames(d_mat), rownames(clin_df)), gene_ids[1]]
 
 boxplot(expr_diseased, expr_healthy,
-        names=c("Diseased", "Healthy"), main="Distribution of gene expression")        
+        names=c("Diseased gene 1", "Healthy gene 1"), main="Distribution of gene expression")
+
+expr_diseased = d_mat[rownames(clin_df), gene_ids[2]]
+expr_healthy = d_mat[setdiff(rownames(d_mat), rownames(clin_df)), gene_ids[2]]
+
+boxplot(expr_diseased, expr_healthy,
+        names=c("Diseased gene 2", "Healthy gene 2"), main="Distribution of gene expression")
+
+expr_diseased = d_mat[rownames(clin_df), gene_ids[3]]
+expr_healthy = d_mat[setdiff(rownames(d_mat), rownames(clin_df)), gene_ids[3]]
+
+boxplot(expr_diseased, expr_healthy,
+        names=c("Diseased gene 3", "Healthy gene 3"), main="Distribution of gene expression")
 
 # get the expression values for the top de genes
 i = 1
@@ -194,6 +218,7 @@ encode_ordinal <- function(x, order = unique(x)) {
 
 clin_df$gender = encode_ordinal(clin_df$gender)
 clin_df$race = encode_ordinal(clin_df$race)
+clin_df$ajcc_pathologic_stage = encode_ordinal(clin_df$ajcc_pathologic_stage)
 clin_df <- na.omit(clin_df)
 scaled_df = clin_df
 scaled_df['age_at_diagnosis'] = scale(scaled_df['age_at_diagnosis'])
@@ -233,6 +258,7 @@ accuracy_test
 prec
 rec
 f1
+
 
 ## SVM
 classifier = svm(formula = long_term ~ .,data = train,type = 'C-classification',kernel = 'linear')
@@ -296,4 +322,3 @@ accuracy_test
 prec
 rec
 f1
-
